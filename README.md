@@ -1,5 +1,6 @@
 A utility for matrix calculations in Scala. 
-Documentation is available under `doc\matrix.html` as a Scaladoc.
+
+~~Documentation is available under `doc\matrix.html` as a Scaladoc.~~ Documentation temporarily unavailable.
 
 ## Features implemented and left to do:
 
