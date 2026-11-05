@@ -7,6 +7,7 @@ A utility for matrix calculations in Scala.
 | Feature | Implementation                                                                           |
 | --- |------------------------------------------------------------------------------------------|
 | Matrix object type | `Matrix(val rows: Int, val columns: Int, collection: Seq[Double])`                       |
+| Identity matrices | `IdentityMatrix(dimensions: Int)` |
 | Describing a matrix | `toString`, `order`, `slotCount`                                                         |
 | Matrix addition, subtraction | `add`, `subtract`, `+`, `-`                                                              |
 | Multiplying matrices | `multiply(matrix: Matrix)`, `*(matrix: Matrix)`                                          |

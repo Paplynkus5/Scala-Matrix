@@ -483,9 +483,16 @@ class Matrix(val rows: Int, val columns: Int, collection: scala.collection.Seq[D
     output
   end toString
 
-
+//Helper method that returns a Vector of elements to be used for creating an IdentityMatrix.
+//That is, its element have the value 0.0 except for those supposed to lay on the main diagonal - those equal 1.0.
 private def getIdentityMatrixContents(dimensions: Int): Vector[Double] =
   val repeating = Vector.tabulate(dimensions + 1)(index => if index % (dimensions + 1) == 0 then 1.0 else 0.0 )
   (1 until dimensions).flatMap(_ => repeating).toVector :+ 1.0
 
+/** A class extending Matrix which allows for creating an identity matrix of a given side length.
+ * Its elements will all equal 0.0, except for those on the main diagonal, which will equal 1.0.
+ *
+ * @see [[https://en.wikipedia.org/wiki/Identity_matrix]]
+ * @param dimensions The row count and column count for the matrix.
+ */
 class IdentityMatrix(dimensions: Int) extends Matrix(dimensions, dimensions, getIdentityMatrixContents(dimensions))
