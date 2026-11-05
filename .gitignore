@@ -19,3 +19,4 @@ hs_err_pid*
 /.idea/
 /project/target/
 /project/project/
+/src/main/scala/matrix/TESTING.sc

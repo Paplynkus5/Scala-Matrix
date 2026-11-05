@@ -265,23 +265,16 @@ class Matrix(val rows: Int, val columns: Int, collection: scala.collection.Seq[D
   /** Creates a new, smaller matrix that is an intersection of select rows and columns found in the matrix upon which this function is called.
    *
    * Mathematically, all values in the output matrix should be adjacent to one another in the original matrix, but this is not checked to allow possible other, unorthodox uses.
-   * @param rowsToTake A Vector object listing the rows which have at least one element that should be included in the output matrix.
+   * @param rowsToTake        A Vector object listing the rows which have at least one element that should be included in the output matrix.
    * @param columnsToSubtract A Vector object listing the columns which should NOT be included in the output matrix.
    * @return A new Matrix object that is formed of the values found in the given rows belonging to the original matrix, with the columns specified in the second parameter omitted.
    */
-  def submatrix(rowsToTake: Vector[Int], columnsToSubtract: Vector[Int]) = //TODO: rewrite?
-    val newRows = Buffer[Buffer[Double | None.type]]()
-
-    for row <- rowsToTake do
-      newRows += this.getRow(row).toBuffer
-    for row <- newRows.indices do
-      for column <- columnsToSubtract do
-        newRows(row)(column - 1) = None
-      newRows(row) = newRows(row).filter(_ != None)
-
-    val outputRows = newRows.flatten.asInstanceOf[Buffer[Double]]
-    Matrix(rowsToTake.length, (this.columns - columnsToSubtract.length), outputRows.toVector)
-  end submatrix
+  def submatrix(rowsToTake: scala.collection.Seq[Int], columnsToSubtract: scala.collection.Seq[Int]): Matrix =
+    val newRows = rowsToTake.map(this.getRow(_).map(Option(_)).toBuffer)
+    for (row <- newRows.indices; column <- columnsToSubtract) do
+      newRows(row)(column - 1) = None
+    val outputRows = newRows.flatMap(_.filter(_.isDefined).flatten)
+    Matrix(rowsToTake.length, (this.columns - columnsToSubtract.length), outputRows)
 
   /** Checks if the matrix upon which this method is called is in row echelon form.
    *
