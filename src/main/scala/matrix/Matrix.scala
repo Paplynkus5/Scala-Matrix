@@ -16,16 +16,32 @@ class Matrix(val rows: Int, val columns: Int, collection: scala.collection.Seq[D
   private val itemCollection = collection.toVector.take(slots) ++ Vector.fill(slots - collection.size)(0.0)
   private val splicedCollection = itemCollection.grouped(columns).toVector
 
-  private def operateOnMatching(collection1: Vector[Double], collection2: Vector[Double],
-                                operation: (Double, Double) => Double): Vector[Double] = //Helper method that performs an operation which takes an element from the first collection, and an element with the same index from another collection, repeating this behaviour for all indices.
-    val outputBuffer = Buffer[Double]()
-    for index <- collection1.indices do
-      outputBuffer += operation(collection1(index), collection2(index))
-    outputBuffer.toVector
+  //Helper method that returns a Vector of elements in specified row.
+  //This is to allow more natural referral to rows in other methods, like in mathematics; that is, the first row is row 1, not 0.
+  private def getRow(number: Int): Vector[Double] = this.splicedCollection(number - 1)
 
-  private def rowOperations(row1: Int, row2: Int, operation: (Double, Double) => Double): Matrix = //Helper method that returns a new Matrix object where elements of two rows with matching indices have undergone some operation. See also: operateOnMatching.
-    val newRow = operateOnMatching(this.splicedCollection(row1 - 1), this.splicedCollection(row2 - 1), operation)
-    Matrix(this.rows, this.columns, this.splicedCollection.updated(row1 - 1, newRow).flatten)
+  //Helper method that performs an operation which takes an element from the first collection,
+  //and an element with the same index from another collection, repeating this behaviour for all indices.
+  private def operateOnMatching(collection1: Vector[Double], collection2: Vector[Double],
+                                operation: (Double, Double) => Double): Vector[Double] =
+    Vector.tabulate(collection1.size)(index => operation(collection1(index), collection2(index)))
+
+  //Helper method that returns a Vector, created by performing a given operation on elements of two rows with matching indices.
+  private def rowOperations(row1: Int, row2: Int, operation: (Double, Double) => Double): Vector[Double] =
+    operateOnMatching(this.getRow(row1), this.getRow(row2), operation)
+
+  //Helper method that returns a new Matrix object with contents of a specified row replaced with those of a given Vector.
+  private def updateRow(rowToUpdate: Int, rowContents: Vector[Double]): Matrix =
+    Matrix(this.rows, this.columns, this.splicedCollection.updated(rowToUpdate - 1, rowContents).flatten)
+
+  //Helper method that returns a Vector, formed of elements of a given row multiplied by a given scalar value.
+  private def multipliedRowVector(row: Int, scalar: Double): Vector[Double] =
+    this.getRow(row).map(_ * scalar)
+
+  /** Returns the number value slots in the matrix, that is: its row count multiplied by its column count.
+   * @return An Int descrbing how many elements can this matrix store.
+   */
+  def slotCount: Int = this.slots
 
   /** Finds the n-th element in a matrix, where n is the index supplied as a parameter.
    * @param index A literal (that is, independent of the row and column count) index of the queried element.
@@ -103,12 +119,12 @@ class Matrix(val rows: Int, val columns: Int, collection: scala.collection.Seq[D
   /** Shorthand notation identical to `multiply(scalar: Double)`.
    * @see multiply(scalar: Double)
    */
-  def *(scalar: Double): Matrix = multiply(scalar)
+  def *(scalar: Double): Matrix = this.multiply(scalar)
 
   /** Shorthand notation identical to `multiply(matrix: Matrix)`.
    * @see multiply(matrix: Matrix)
    */
-  def *(matrix: Matrix): Matrix = multiply(matrix)
+  def *(matrix: Matrix): Matrix = this.multiply(matrix)
 
   /** Performs the operation of matrix addition on two Matrix objects - that is, sums the elements from both matrices which have the same indices.
    *
@@ -118,7 +134,7 @@ class Matrix(val rows: Int, val columns: Int, collection: scala.collection.Seq[D
    * @return A new Matrix object, with each element being a sum of the corresponding ones in the input matrices.
    */
   def add(matrix: Matrix): Matrix =
-    Matrix(this.rows, this.columns, operateOnMatching(this.itemCollection, matrix.itemCollection, _ + _))
+    Matrix(this.rows, this.columns, this.operateOnMatching(this.itemCollection, matrix.itemCollection, _ + _))
 
   /** Performs the operation of matrix subtraction on two Matrix objects -
    * that is, subtracts the elements from the second matrix from matching elements in the matrix upon which this method is called.
@@ -128,8 +144,8 @@ class Matrix(val rows: Int, val columns: Int, collection: scala.collection.Seq[D
    * @param matrix A matrix which should be subtracted from the one upon which this method is called. Has to have the same dimensions as the first matrix.
    * @return A new Matrix object, with each element being the difference of corresponding items in the input matrices.
    */
-  def subtract(matrix: Matrix): Matrix = //calling matrixA.subtract(matrixB) acts like so: item from matrixA - matching item from matrixB
-    Matrix(this.rows, this.columns, operateOnMatching(this.itemCollection, matrix.itemCollection, _ - _))
+  def subtract(matrix: Matrix): Matrix =
+    Matrix(this.rows, this.columns, this.operateOnMatching(this.itemCollection, matrix.itemCollection, _ - _))
 
   /** Multiplies elements with the same index found in two matrices by one another.
    *
@@ -140,7 +156,7 @@ class Matrix(val rows: Int, val columns: Int, collection: scala.collection.Seq[D
    * @return A new Matrix object, with each element being the product of corresponding items in the input matrices.
    */
   def multiplyMatching(matrix: Matrix): Matrix =
-    Matrix(this.rows, this.columns, operateOnMatching(this.itemCollection, matrix.itemCollection, _ * _))
+    Matrix(this.rows, this.columns, this.operateOnMatching(this.itemCollection, matrix.itemCollection, _ * _))
 
   /** Divides the elements in the matrix upon which this method is called, by elements with a matching index found in the matrix supplied as a parameter.
    *
@@ -150,8 +166,8 @@ class Matrix(val rows: Int, val columns: Int, collection: scala.collection.Seq[D
    * @param matrix A matrix containing the elements by which those in the first matrix (one that this function is called upon) should be divided by.
    * @return A new Matrix object, with each element being the quotient of corresponding items in the input matrices.
    */
-  def divideMatching(matrix: Matrix): Matrix = //calling matrixA.divideMatching(matrixB) acts like so: item from matrixA / matching item from matrixB
-    Matrix(this.rows, this.columns, operateOnMatching(this.itemCollection, matrix.itemCollection, _ / _))
+  def divideMatching(matrix: Matrix): Matrix =
+    Matrix(this.rows, this.columns, this.operateOnMatching(this.itemCollection, matrix.itemCollection, _ / _))
 
   /** Returns the remainders of dividing each element in the matrix that the method is called upon, by the elements with same index found in the matrix supplied as a parameter.
    *
@@ -162,17 +178,17 @@ class Matrix(val rows: Int, val columns: Int, collection: scala.collection.Seq[D
    * @return A new Matrix object, with each element being the remainder of dividing items in the input matrices.
    */
   def remainderOfMatching(matrix: Matrix): Matrix =
-    Matrix(this.rows, this.columns, operateOnMatching(this.itemCollection, matrix.itemCollection, _ % _))
+    Matrix(this.rows, this.columns, this.operateOnMatching(this.itemCollection, matrix.itemCollection, _ % _))
 
   /** Shorthand notation identical to [[add]].
    * @see [[add]]
    */
-  def +(matrix: Matrix): Matrix = add(matrix)
+  def +(matrix: Matrix): Matrix = this.add(matrix)
 
   /** Shorthand notation identical to [[subtract]].
    * @see [[subtract]]
    */
-  def -(matrix: Matrix): Matrix = subtract(matrix)
+  def -(matrix: Matrix): Matrix = this.subtract(matrix)
 
   /** Performs the row operation of adding elements from one row to the elements in another row, replacing the other row in place.
    *
@@ -181,16 +197,41 @@ class Matrix(val rows: Int, val columns: Int, collection: scala.collection.Seq[D
    * @param addAtRow The row which will be replaced with sums of the original values and the values in the first row (specified in the first parameter) with matching indices.
    * @return A new Matrix object with the row specified in the second parameter updated in place.
    */
-  def rowAdd(addFromRow: Int, addAtRow: Int): Matrix = rowOperations(addFromRow, addAtRow, _ + _)
+  def rowAdd(addFromRow: Int, addAtRow: Int): Matrix =
+    this.updateRow(addAtRow, this.rowOperations(addFromRow, addAtRow, _ + _))
+
+   /** Performs the row operation of adding elements from one (scaled) row to the elements in another row, replacing the other row in place.
+   *
+   * @see [[rowSubtract]]
+   * @param scalar A scale factor for the values found in the first row.
+   * @param addFromRow The row whose scaled values should be added to the values found in the other row.
+   * @param addAtRow The row which will be replaced with sums of the original values and the values in the first row (specified in the first parameter) with matching indices.
+   * @return A new Matrix object with the row specified in the second parameter updated in place.
+   */
+  def rowAdd(scalar: Double, addFromRow: Int, addAtRow: Int): Matrix =
+   this.updateRow(addAtRow, this.operateOnMatching(splicedCollection(addAtRow - 1), multipliedRowVector(addFromRow, scalar), _ + _))
 
   /** Performs the row operation of subtracting elements from one row from the elements in another row, replacing the other row in place.
    *
    * @see [[rowAdd]]
-   * @param subtractWithRow The row whose values should be subtracted from the values found in the other row.
-   * @param subtractAtRow The row which will be replaced with the difference of its original values and the values in the row specified in the first parameter with matching indices.
+   * @param subtractAtRow The row which will be replaced with the difference of its original values and the values in the row specified in the second parameter with matching indices.
+   * @param subtractWithRow The row whose values should be subtracted from the values found in the other specified row.
    * @return A new Matrix object with the row specified in the second parameter updated in place.
    */
-  def rowSubtract(subtractWithRow: Int, subtractAtRow: Int): Matrix = rowOperations(subtractAtRow, subtractWithRow, _ - _)
+  def rowSubtract(subtractAtRow: Int, subtractWithRow: Int): Matrix =
+    this.updateRow(subtractAtRow, this.rowOperations(subtractAtRow, subtractWithRow, _ - _))
+
+
+  /** Performs the row operation of subtracting elements from one (scaled) row from the elements in another row, replacing the other row in place.
+   *
+   * @see [[rowAdd]]
+   * @param scalar A scale factor for the values found in the first row.
+   * @param subtractAtRow The row which will be replaced with the difference of its original values and the values in the row specified in the second parameter with matching indices.
+   * @param subtractWithRow The row whose scaled values should be subtracted from the values found in the other row.
+   * @return A new Matrix object with the row specified in the second parameter updated in place.
+   */
+  def rowSubtract(scalar: Double, subtractAtRow: Int, subtractWithRow: Int): Matrix =
+    this.updateRow(subtractAtRow, this.operateOnMatching(splicedCollection(subtractAtRow - 1), multipliedRowVector(subtractWithRow, scalar), _ - _))
 
   /** Updates the elements of a given row with the product of their multiplication by a specified value.
    *
@@ -200,8 +241,7 @@ class Matrix(val rows: Int, val columns: Int, collection: scala.collection.Seq[D
    * @return A new Matrix object with the row specified in the first parameter scaled in place by the factor found in the second parameter.
    */
   def rowMultiply(row: Int, scalar: Double): Matrix =
-    val newRow = this.splicedCollection(row - 1).map(_ * scalar)
-    Matrix(this.rows, this.columns, this.splicedCollection.updated(row - 1, newRow).flatten)
+    this.updateRow(row, multipliedRowVector(row, scalar))
 
   /** Updates the elements of a given row with the quotient of their division by a specified value.
    *
@@ -219,10 +259,8 @@ class Matrix(val rows: Int, val columns: Int, collection: scala.collection.Seq[D
    * @return A new Matrix object with the two specified rows swapped with one another.
    */
   def rowSwitch(row1: Int, row2: Int): Matrix =
-    val oldRow1 = this.splicedCollection(row1 - 1)
-    var newCollection = this.splicedCollection.updated(row1 - 1, this.splicedCollection(row2 - 1))
-    newCollection = newCollection.updated(row2 - 1, oldRow1)
-    Matrix(this.rows, this.columns, newCollection.flatten)
+    val oldRow1Vector = this.getRow(row1)
+    this.updateRow(row1, this.getRow(row2)).updateRow(row2, oldRow1Vector)
 
   /** Creates a new, smaller matrix that is an intersection of select rows and columns found in the matrix upon which this function is called.
    *
@@ -231,11 +269,11 @@ class Matrix(val rows: Int, val columns: Int, collection: scala.collection.Seq[D
    * @param columnsToSubtract A Vector object listing the columns which should NOT be included in the output matrix.
    * @return A new Matrix object that is formed of the values found in the given rows belonging to the original matrix, with the columns specified in the second parameter omitted.
    */
-  def submatrix(rowsToTake: Vector[Int], columnsToSubtract: Vector[Int]) =
+  def submatrix(rowsToTake: Vector[Int], columnsToSubtract: Vector[Int]) = //TODO: rewrite?
     val newRows = Buffer[Buffer[Double | None.type]]()
 
     for row <- rowsToTake do
-      newRows += this.splicedCollection(row - 1).toBuffer
+      newRows += this.getRow(row).toBuffer
     for row <- newRows.indices do
       for column <- columnsToSubtract do
         newRows(row)(column - 1) = None
@@ -381,10 +419,18 @@ class Matrix(val rows: Int, val columns: Int, collection: scala.collection.Seq[D
    * @see [[https://sites.ualberta.ca/~jsylvest/books/DLA/section-det-by-row-red-concepts.html]]
    * @return A new Matrix object in row echelon form, and an Int either equal to 1 or -1.
    */
-  def echelon: (Matrix, Int) =
+  def echelon: (Matrix, Int) = //TODO: fix / rewrite
     if isInRowEchelonForm then
       (this, 1)
-    else ???
+    else
+      ???
+
+//  loop N through columns
+//  choose element N,N as pivot
+//  loop E through rows starting at N + 1
+//    if element E,N != 0 then
+//      subtract (E,N) / (N,N) * (row N) from row E replacing row E
+//
 
   /** Work in progress - not implemented.
    *
@@ -446,11 +492,7 @@ class Matrix(val rows: Int, val columns: Int, collection: scala.collection.Seq[D
 
 
 private def getIdentityMatrixContents(dimensions: Int): Vector[Double] =
-  //1 +: (1 until dimensions).flatMap( (0 until dimensions).map(elem => elem - elem) :+ 1 )
   val repeating = Vector.tabulate(dimensions + 1)(index => if index % (dimensions + 1) == 0 then 1.0 else 0.0 )
   (1 until dimensions).flatMap(_ => repeating).toVector :+ 1.0
 
 class IdentityMatrix(dimensions: Int) extends Matrix(dimensions, dimensions, getIdentityMatrixContents(dimensions))
-
-
-//TODO: GUI for matrix creation and operations
