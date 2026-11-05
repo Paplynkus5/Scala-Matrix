@@ -269,19 +269,12 @@ class Matrix(val rows: Int, val columns: Int, collection: scala.collection.Seq[D
    * @param columnsToSubtract A Vector object listing the columns which should NOT be included in the output matrix.
    * @return A new Matrix object that is formed of the values found in the given rows belonging to the original matrix, with the columns specified in the second parameter omitted.
    */
-  def submatrix(rowsToTake: Vector[Int], columnsToSubtract: Vector[Int]) = //TODO: rewrite?
-    val newRows = Buffer[Buffer[Double | None.type]]()
-
-    for row <- rowsToTake do
-      newRows += this.getRow(row).toBuffer
-    for row <- newRows.indices do
-      for column <- columnsToSubtract do
-        newRows(row)(column - 1) = None
-      newRows(row) = newRows(row).filter(_ != None)
-
-    val outputRows = newRows.flatten.asInstanceOf[Buffer[Double]]
-    Matrix(rowsToTake.length, (this.columns - columnsToSubtract.length), outputRows.toVector)
-  end submatrix
+  def submatrix(rowsToTake: scala.collection.Seq[Int], columnsToSubtract: scala.collection.Seq[Int]) =
+    val newRows = rowsToTake.map(this.getRow(_).map(Option(_)).toBuffer)
+    for( row <- newRows.indices; column <- columnsToSubtract) do
+      newRows(row)(column - 1) = None
+    val outputRows = newRows.flatMap(_.filter(_.isDefined).flatten)
+    Matrix(rowsToTake.length, (this.columns - columnsToSubtract.length), outputRows)
 
   /** Checks if the matrix upon which this method is called is in row echelon form.
    *
