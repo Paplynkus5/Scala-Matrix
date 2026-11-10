@@ -11,7 +11,7 @@ A utility for matrix calculations in Scala.
 | Describing a matrix                                                                                | `toString`, `order`, `slotCount`                                                         |
 | Matrix addition, subtraction                                                                       | `add`, `subtract`, `+`, `-`                                                              |
 | Multiplying matrices                                                                               | `multiply(matrix: Matrix)`, `*(matrix: Matrix)`                                          |
-| Row operations                                                                                     | `rowAdd`, `rowSubtract`, `rowMultiply`, `rowDivide`, `rowSwitch`                         |
+| Row operations                                                                                     | `rowAdd`, `rowSubtract`, `rowMultiply`, `rowDivide`, `rowSwitch`, `sortZeroedRows`       |
 | Matrix transposition                                                                               | `transpose`                                                                              |
 | Trace calculation                                                                                  | `trace`                                                                                  |
 | Methods returning elements stored as collections                                                   | `rowsVector`, `columnsVector`, `elementsVector`                                          |

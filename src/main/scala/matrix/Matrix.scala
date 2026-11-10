@@ -16,27 +16,34 @@ class Matrix(val rows: Int, val columns: Int, collection: scala.collection.Seq[D
   private val itemCollection = collection.toVector.take(slots) ++ Vector.fill(slots - collection.size)(0.0)
   private val splicedCollection = itemCollection.grouped(columns).toVector
 
-  //Helper method that returns a Vector of elements in specified row.
+  //Helper - returns a Vector of elements in specified row.
   //This is to allow more natural referral to rows in other methods, like in mathematics; that is, the first row is row 1, not 0.
   private def getRow(number: Int): Vector[Double] = this.splicedCollection(number - 1)
 
-  //Helper method that performs an operation which takes an element from the first collection,
+  //Helper - performs an operation which takes an element from the first collection,
   //and an element with the same index from another collection, repeating this behaviour for all indices.
   private def operateOnMatching(collection1: Vector[Double], collection2: Vector[Double],
                                 operation: (Double, Double) => Double): Vector[Double] =
     Vector.tabulate(collection1.size)(index => operation(collection1(index), collection2(index)))
 
-  //Helper method that returns a Vector, created by performing a given operation on elements of two rows with matching indices.
+  //Helper - returns a Vector, created by performing a given operation on elements of two rows with matching indices.
   private def rowOperations(row1: Int, row2: Int, operation: (Double, Double) => Double): Vector[Double] =
     operateOnMatching(this.getRow(row1), this.getRow(row2), operation)
 
-  //Helper method that returns a new Matrix object with contents of a specified row replaced with those of a given Vector.
+  //Helper - returns a new Matrix object with contents of a specified row replaced with those of a given Vector.
   private def updateRow(rowToUpdate: Int, rowContents: Vector[Double]): Matrix =
     Matrix(this.rows, this.columns, this.splicedCollection.updated(rowToUpdate - 1, rowContents).flatten)
 
-  //Helper method that returns a Vector, formed of elements of a given row multiplied by a given scalar value.
+  //Helper - returns a Vector, formed of elements of a given row multiplied by a given scalar value.
   private def multipliedRowVector(row: Int, scalar: Double): Vector[Double] =
     this.getRow(row).map(_ * scalar)
+
+  //Helper - returns a Boolean describing whether rows that contain only zeros are at the bottom of the matrix
+  private def checkIfZeroedRowsAreLast: Boolean =
+    val rowsWithIndices = this.splicedCollection.zipWithIndex
+    rowsWithIndices.dropRight(1).forall( (elem: (Vector[Double], Int)) =>
+      elem(0).exists(_ != 0.0) || this.splicedCollection(elem(1) + 1).forall(_ == 0)
+    ) //conditions: all rows except the last one have to have a non-zero element, or the next row must also be zeroed out
 
   /** Returns the number value slots in the matrix, that is: its row count multiplied by its column count.
    * @return An Int descrbing how many elements can this matrix store.
@@ -54,7 +61,7 @@ class Matrix(val rows: Int, val columns: Int, collection: scala.collection.Seq[D
    * @param column The column in which the queried element is in.
    * @return Element from the matrix that occupies the specified slot.
    */
-  def element(row: Int, column: Int): Double = this.itemCollection((row - 1) * this.columns + column - 1)
+  def element(row: Int, column: Int): Double = this.getRow(row)(column - 1)
 
   /** A way to access the private `val` containing all elements in the matrix in a one-dimensional vector form.
    * @return A vector containing all the values in this matrix.
@@ -286,7 +293,7 @@ class Matrix(val rows: Int, val columns: Int, collection: scala.collection.Seq[D
     for column <- 0 until (this.columns - 1) do
       successFlag = successFlag && (columnsVector(column).drop(column + 1).sum == 0)
     for row <- 0 until this.rows do
-      if this.splicedCollection(row).sum == 0 then
+      if this.splicedCollection(row).forall(_ == 0) then
         successFlag = successFlag && (row == this.rows - 1 || this.splicedCollection.map(_.sum).drop(row + 1).sum == 0)
     successFlag
 
@@ -305,7 +312,7 @@ class Matrix(val rows: Int, val columns: Int, collection: scala.collection.Seq[D
     if this.rows == this.columns then
       for index <- 0 until this.rows do
         rawOutput += this.splicedCollection(index)(index)
-      output = Some(rawOutput * this.echelon(1))
+      output = Some(rawOutput)
     output
   end trace
 
@@ -375,69 +382,60 @@ class Matrix(val rows: Int, val columns: Int, collection: scala.collection.Seq[D
   infix def below(another: Matrix): Matrix =
     another.transpose.leftOf(this.transpose).transpose
 
-  /** Obtains the determinant of the (square) matrix upon which this method is called. This is the same as the trace of a matrix in row echelon form.
-   *
+  /** Obtains the determinant of the (square) matrix upon which this method is called.
+   * //TODO: fix and document
    * Requires the matrix upon which this method is called to be square; that is, have the same number of rows as columns.
    * @see [[trace]]
    * @see [[https://en.wikipedia.org/wiki/Determinant]]
    * @see [[https://en.wikipedia.org/wiki/Row_echelon_form]]
    * @return The trace value wrapped in an Option, if the matrix is square; `None` otherwise.
    */
-  def determinant: Option[Double] =
-    var output: Option[Double] = None
-    var rawOutput = 0.0
-
-    if this.rows == this.columns then
-      for index <- 0 until this.rows do
-        rawOutput *= this.echelon(0).splicedCollection(index)(index)
-      output = Some(rawOutput * this.echelon(1))
-
-    output
-  end determinant
+  def determinant: Option[Double] = //TODO: fix - not true
+    this.echelon.trace
 
   /** Shorthand notation identical to [[determinant]].
    * @see [[determinant]]
    */
   def det: Option[Double] = this.determinant
 
-  /** Work in progress - not implemented fully.
-   * Does nothing in its current form except returning: the same matrix as the one upon which this method is called, if [[isInRowEchelonForm]] is true, and the number 1.
-   *
-   * To get the correct determinant of the output matrix, multiply the normally obtained result by the second element of the Vector returned by this function.
-   *
-   * This is because each row swapping operation impacts the determinant of a matrix by changing its sign. Thus, the second value returned by this function keeps track of
-   * the number of such operations that were performed by the function whilst getting the original matrix to the row echelon form.
-   * @see [[isInRowEchelonForm]]
-   * @see [[https://en.wikipedia.org/wiki/Row_echelon_form]]
-   * @see [[https://sites.ualberta.ca/~jsylvest/books/DLA/section-det-by-row-red-concepts.html]]
-   * @return A new Matrix object in row echelon form, and an Int either equal to 1 or -1.
+  /**Sorts the matrix so that rows containing only zeros are placed at the bottom.
+   * Note that this may impact the value of the determinant.
+   * @return A Matrix object with zeroed rows moved to the bottom.
    */
-  def echelon: (Matrix, Int) = //TODO: fix / rewrite
+  def sortZeroedRows: Matrix =
+    var outputMatrix = this
+    var index = 0
+    while !outputMatrix.checkIfZeroedRowsAreLast do
+      if outputMatrix.rowsVector.dropRight(1)(index).forall(_ == 0) then
+        outputMatrix = outputMatrix.rowSwitch(index + 1, index + 2)
+      index = (index + 1) % (this.rows - 1)
+    outputMatrix
+
+  /** Not documented //TODO: document
+   */
+  def echelon: Matrix = //TODO: fix - NaN and/or Infinity show up when the element above nonZero is equal to 0.0
     if isInRowEchelonForm then
-      (this, 1)
+      this
     else
-      ???
+      var outputMatrix = this.sortZeroedRows
+      for (column <- 1 to this.columns; row <- column + 1 to this.rows) do
+        outputMatrix.splicedCollection(row - 1)(column - 1) match
+          case 0.0 => ()
+          case nonZero =>
+            val scalar = nonZero / outputMatrix.splicedCollection(column - 1)(column - 1)
+            outputMatrix = outputMatrix.rowSubtract(scalar, row, column)
+        end match
+      end for
+      outputMatrix
 
-//  loop N through columns
-//  choose element N,N as pivot
-//  loop E through rows starting at N + 1
-//    if element E,N != 0 then
-//      subtract (E,N) / (N,N) * (row N) from row E replacing row E
-//
-
-  /** Work in progress - not implemented.
+  /** Work in progress - not implemented. //TODO: document
    *
    * @see [[echelon]]
    * @return
    */
-  def reducedEchelon: (Matrix, Int) =
-    var operatedOn = (this, 1)
-    if !isInRowEchelonForm then
-      operatedOn = this.echelon
-    else ???
-    operatedOn
+  def reducedEchelon: Matrix = ??? //TODO: implement
 
-  /** Work in progress - not fully implemented.
+  /** Work in progress - not fully implemented. //TODO: document
    *
    * @return A new Matrix object wraped in an Option, which is the inverse of the original matrix (if the original matrix has an inverse).
    *         Otherwise, `None`.
@@ -445,12 +443,12 @@ class Matrix(val rows: Int, val columns: Int, collection: scala.collection.Seq[D
   def inverse: Option[Matrix] =
     if this.determinant.getOrElse(0) == 0 then None
     else
-      var output = this.leftOf(IdentityMatrix(this.rows)).reducedEchelon(0)
+      var output = this.leftOf(IdentityMatrix(this.rows)).reducedEchelon //TODO: test after implementing reducedEchelon
       output = output.submatrix(Vector.tabulate(this.rows)(_ + 1), Vector.tabulate(this.columns)(_ + 1))
       Some(output)
 
 
-  //TODO: Complete methods: inverse, echelon, reducedEchelon
+  //TODO: Complete methods: inverse, determinant, echelon, reducedEchelon
 
   /** Returns a String that states the [[order]] (dimensions) of the matrix at hand and visualises it, with each new line being subsequent rows of the matrix.
    *
@@ -483,7 +481,7 @@ class Matrix(val rows: Int, val columns: Int, collection: scala.collection.Seq[D
     output
   end toString
 
-//Helper method that returns a Vector of elements to be used for creating an IdentityMatrix.
+//Helper - returns a Vector of elements to be used for creating an IdentityMatrix.
 //That is, its element have the value 0.0 except for those supposed to lay on the main diagonal - those equal 1.0.
 private def getIdentityMatrixContents(dimensions: Int): Vector[Double] =
   val repeating = Vector.tabulate(dimensions + 1)(index => if index % (dimensions + 1) == 0 then 1.0 else 0.0 )
